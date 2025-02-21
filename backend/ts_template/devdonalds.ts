@@ -104,12 +104,44 @@ app.get("/summary", (req:Request, res:Request) => {
 
 function fullRecipeSearching(recipeToSearch: recipe): fullRecipe | null {
   const visitedRecipes = new Set<string>();
-  const visitedIngredients = new Set<string>();
+  const visitedIngredients = new Map<string, { totalQuantity: number; cookTime: number }>();
   const res: fullRecipe = [];
-  // TODO to be implemented
-  function processRecipe(curr: recipe): boolean {
-    return;
+
+  function processRecipe(curr: recipe, multipler: number): boolean {
+    // if does not exist then track it
+    if (!visitedRecipes.has(curr.name)) {
+      visitedRecipes.add(curr.name);
+      res.push(curr);
+    }
+    for (const it of curr.requiredItems) {
+      const itEntry = cookbook.get(it.name);
+      // item does not exist
+      if (!itEntry) return false;
+      const quantityRequired = it.quantity * multipler;
+
+      if (itEntry.type === "ingredient") {
+        const itCookTime = itEntry.cookTime;
+        const ingredientInfo = visitedIngredients.get(itEntry.name) || { totalQuantity: 0, cookTime: itCookTime };
+        const newQuantity = ingredientInfo.totalQuantity + quantityRequired;
+        visitedIngredients.set(it.name, { totalQuantity: newQuantity, cookTime: itCookTime });
+      } else {
+        if (!processRecipe(itEntry, quantityRequired)) return false;
+      }
+    }
+    return true;
   }
+
+  if (!processRecipe(recipeToSearch, 1)) return null;
+
+  for (const [name, { totalQuantity, cookTime }] of visitedIngredients) {
+    res.push({
+      type: "ingredient",
+      name,
+      cookTime: totalQuantity * cookTime
+    });
+  }
+  
+  return res;
 }
 
 // =============================================================================
