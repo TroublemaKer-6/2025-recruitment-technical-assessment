@@ -27,7 +27,7 @@ const app = express();
 app.use(express.json());
 
 // Store your recipes here!
-const cookbook: any = null;
+const cookbook = new Map<string, recipe | ingredient>();
 
 // Task 1 helper (don't touch)
 app.post("/parse", (req:Request, res:Response) => {
@@ -87,7 +87,7 @@ app.post("/entry", (req:Request, res:Response) => {
 // Endpoint that returns a summary of a recipe that corresponds to a query name
 app.get("/summary", (req:Request, res:Request) => {
   const recipeName: string = req.query.name as string;
-  const recipeFound = cookbook.find((e: recipe | ingredient) => e.name === recipeName);
+  const recipeFound = cookbook.get(recipeName) as recipe;
 
   if (!recipeFound)
     return res.status(400).send("A recipe with the corresponding name cannot be found"); 
@@ -120,12 +120,12 @@ function fullRecipeSearching(recipeToSearch: recipe): fullRecipe | null {
       const quantityRequired = it.quantity * multipler;
 
       if (itEntry.type === "ingredient") {
-        const itCookTime = itEntry.cookTime;
+        const itCookTime = (itEntry as ingredient).cookTime;
         const ingredientInfo = visitedIngredients.get(itEntry.name) || { totalQuantity: 0, cookTime: itCookTime };
         const newQuantity = ingredientInfo.totalQuantity + quantityRequired;
         visitedIngredients.set(it.name, { totalQuantity: newQuantity, cookTime: itCookTime });
       } else {
-        if (!processRecipe(itEntry, quantityRequired)) return false;
+        if (!processRecipe((itEntry as recipe), quantityRequired)) return false;
       }
     }
     return true;
